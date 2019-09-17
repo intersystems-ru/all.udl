@@ -2,7 +2,7 @@
 
 [![Gitter](https://img.shields.io/badge/chat-on%20telegram-blue.svg)](https://t.me/joinchat/FoZ4MxGETT0_VsVglVl0DA)
 
-Export/Import source code (classes, macro, routines) and DeepSee artefacts(pivots, dashboards, termlists, pivot variables, shared measures) from and to InterSystems Data Platform products(Caché, Ensemble, IRIS). Support versions from 2016.2
+Export/Import source code (classes, macro, routines) and DeepSee artifacts (pivots, dashboards, termlists, pivot variables, shared measures) from and to InterSystems Data Platform products (Caché, Ensemble, IRIS). Support versions from 2016.2.
 
 # Installation
 Download code and run
@@ -13,7 +13,7 @@ do $System.OBJ.ImportDir(dir,"*.xml;*.cls;*.mac;*.int;*.inc;*.dfi","cuk",,1)
 or
 import the [release](https://github.com/intersystems-ru/cache-udl/releases) to the namespace.
 
-Map sc package to %All namespace to make it visible in any namespace.
+Map the sc package to the %All namespace to make it visible in any namespace.
 
 # Usage
 
@@ -58,15 +58,15 @@ Run init method to initialize project settings:
 ```
 NS> d ##class(dev.code).init()
 ```
-Then run release to export all the classes in compileList into one "myproject.xml" release file. It will export it into the default for current Namespace directory.
+Then run release() to export all the classes in compileList into one "myproject.xml" release file. It will export it into the default directory for the current Namespace.
 ```
 NS> d ##class(dev.code).release()
 ```
-Or compile it whenever you want to compile all the proejct related resources.
+Or compile it whenever you want to compile all the project related resources.
 ```
 NS> d ##class(dev.code).compile()
 ```
-Get last changes from github or local git. Run patch to export the classes in compileList into one "patch.xml" patch file. It will export it into the default for current Namespace directory or you can choose where export. By default, makes a patch from the last commit if you do not specify `commitFrom` and `commitTo` e.g.
+Get the latest changes from github or local git. Run patch() to export the classes in compileList into one "patch.xml" patch file. It will export it into the default directory for the current Namespace or you can choose the export dir. By default, it makes a patch from the last commit if you do not specify `commitFrom` and `commitTo` e.g.
 ```
 NS> s filename = "c:\patch.xml"
 NS> s commitFrom = 1
@@ -75,10 +75,10 @@ NS> d ##class(dev.code).patch(filename,commitFrom,commitTo)
 ```
 
 ## Known issues
-Be careful with import termlists, pivot variables and shared measures. In current implementation imported artefacts replace those you have in the target namespace. It happens because the utility uses standard global import for globals in XML with $System.OBJ.Import which kills the global first and imports the new one.
+Be careful with import termlists, pivot variables and shared measures. In the current implementation, imported artifacts replace those you have in the target namespace. It happens because the utility uses standard global import for globals in XML with $System.OBJ.Import which kills the global first and imports the new one.
 
 #### If after using the export command, git treats unaltered files as modified, the problem may be in the following:
-- When moving sources from one OS to another (f.e. from win to mac), the end of the line character was not taken into account. To fix this, you need to specify git to make the end of line character look the same.
+- When moving sources from one OS to another (e.g., from win to mac), the end of the line character was not taken into account. To fix this, you need to specify git to make the end of line character look the same.
 
   solution: ```git config --global core.autocrlf input```
 - File access rights have been changed. In this case, you will need to specify that you do not want to track these changes.
