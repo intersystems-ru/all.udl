@@ -1,4 +1,4 @@
-Class sc.diff.gitHub
+Class dev.diff.gitHub
 {
 
 ClassMethod Get(Output items, Owner As %String = "", Repository As %String = "", Username As %String = "clminstaller", Password As %String = "clminstaller2016", CommitFrom As %Integer = "", CommitTo As %Integer = "") As %Status
@@ -66,7 +66,7 @@ ClassMethod GetFileNameForReleaseBySHAs(Request As %Net.HttpRequest, SHAsList, O
 			set fileName = files.GetAt(j).%data("filename")
 			set:$L(fileName,".xml")'=1 fileName = $extract(fileName,1,*-4)
 			continue:..IsCacheFile(fileName)=0
-			do ##class(sc.diff.utils).ToCacheName(.fileName)
+			do ##class(dev.diff.utils).ToCacheName(.fileName)
 			set filesForRelease(fileName) = ""
 		}
 	}

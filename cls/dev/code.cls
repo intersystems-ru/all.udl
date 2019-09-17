@@ -1,13 +1,14 @@
 /// Export different types of modules in different subfolders in UDL (plain) format
 /// test.dfi -> /dfi/test.dfi
 /// testpkg.test.cls -> /cls/testpkg/test.cls
-Class sc.code [ Abstract ]
+Class dev.code [ Abstract ]
 {
+
+Parameter version = "1.1.0.4";
 
 /// export all available code
-ClassMethod export(generated = 0, system = 0, percent = 0, mapped = 0, mask = "", dfi = 0)
+ClassMethod export(mask = "", generated = 0, system = 0, percent = 0, mapped = 0, dfi = 0)
 {
-
 	#define export(%code, %file) s sc = $system.OBJ.ExportUDL(%code, %file,"/diffexport") ##continue
 								 w:sc "Ok" d:'sc $system.OBJ.DisplayError(sc)
 
@@ -15,13 +16,6 @@ ClassMethod export(generated = 0, system = 0, percent = 0, mapped = 0, mask = ""
 	#define isPercented(%code) ("%" = $e(%code))
 	#define isMapped(%code) ##class(%RoutineMgr).IsMapped( %code )
 	#define log w !, code, " -> ", $piece(filename,..workdir(),2), " "
-	
-	#define mkdir(%filename) ##continue
-			s path = ##class(%File).GetDirectory( %filename ) ##continue
-			if '##class(%File).DirectoryExists( path ) { ##continue
-				s sc = ##class(%File).CreateDirectoryChain( path ) ##continue
-				w !, "mkdir ", path, " ", sc ##continue
-			}
 						
 	w "#; Exporting to ", ..workdir(),!
 	#; classes
@@ -35,10 +29,10 @@ ClassMethod export(generated = 0, system = 0, percent = 0, mapped = 0, mask = ""
 			if ( 'generated && $$$isGenerated( code ) ) continue
 			if ( 'percent && $$$isPercented( code ) ) continue
 			if ( 'mapped && $$$isMapped( code ) ) continue
-			if ( '$find( code, mask ) ) continue
+			if ( '..checkMasks( code, mask ) ) continue
 			
 			s filename = ..filename( code )
-			$$$mkdir( filename )
+			do ..mkdir( filename )
 			$$$log
 			$$$export( code, filename )
 
@@ -56,10 +50,10 @@ ClassMethod export(generated = 0, system = 0, percent = 0, mapped = 0, mask = ""
 	 		if ( 'generated && $$$isGenerated( code ) ) continue
 	 		if ( 'percent && $$$isPercented( code ) ) continue
 			if ( 'mapped && $$$isMapped( code ) ) continue
-			if ( '$find( code, mask ) ) continue
+			if ( '..checkMasks( code, mask ) ) continue
 			
 			s filename = ..filename( code )
-			$$$mkdir( filename )
+			do ..mkdir( filename )
 			$$$log
 			$$$export( code, filename )
 
@@ -78,9 +72,14 @@ ClassMethod export(generated = 0, system = 0, percent = 0, mapped = 0, mask = ""
 		set filename = ..filename( code_".dfi" )
 		set documentName = rs.documentName
 		
-		if ( '$find($zcvt(documentName,"l"), mask ) ) continue
 		if ($L(code,"$TRASH")>1) continue
-		$$$mkdir( filename )
+		
+		if ( 'generated && $$$isGenerated( code ) ) continue
+	 	if ( 'percent && $$$isPercented( code ) ) continue
+		if ( 'mapped && $$$isMapped( code ) ) continue
+		if ( '..checkMasks(documentName, mask) ) continue
+		
+		do ..mkdir( filename )
 		
 		if dfi{
 			$$$log
@@ -93,6 +92,9 @@ ClassMethod export(generated = 0, system = 0, percent = 0, mapped = 0, mask = ""
 		}
 
 	} s rs=""
+	
+	#;DeepSee artefacts
+	do ..exportDeepSeeArtefacts()
 	
 	w !,!, "#; Exported to ", ..workdir()
 	
@@ -157,6 +159,26 @@ ClassMethod import(filemask = "*.xml;*.cls;*.mac;*.int;*.inc;*.dfi", qspec = "ck
 	Q sc
 }
 
+ClassMethod exportDeepSeeArtefacts() As %Status
+{
+	set sc = $$$OK
+	set artefacts = $listbuild("DeepSee.Variables","DeepSee.TermList","DeepSee.CalcMbrs")
+	
+	for i=1:1:$listlength(artefacts)
+	{
+		set artefact = $list(artefacts,i)
+		continue:$data(@("^"_artefact))=0
+		
+		set artefact = artefact_".GBL"
+		set filename = ..filename(artefact)
+		do ..mkdir(filename)
+
+		set sc = ..fixXMLLine(artefact, filename_".xml")
+	}
+
+	return sc
+}
+
 ClassMethod patch(filename = "", commitFrom = "", commitTo = "") As %Status
 {
 	s gln = ..gln()
@@ -165,7 +187,7 @@ ClassMethod patch(filename = "", commitFrom = "", commitTo = "") As %Status
 	set:commitTo="" commitTo=1
 	if (git = 0) {
 		set:(commitFrom="")||(commitFrom=1) commitFrom=0
-		set sc = ##class(sc.diff.gitLocal).buildDiff(..workdir(), "HEAD~"_commitTo, "HEAD~"_commitFrom, .items)
+		set sc = ##class(dev.diff.gitLocal).buildDiff(..workdir(), "HEAD~"_commitTo, "HEAD~"_commitFrom, .items)
 		return:$$$ISERR(sc) sc
 	}elseif(git = 1) {
 		set owner = @gln@("owner")
@@ -174,7 +196,7 @@ ClassMethod patch(filename = "", commitFrom = "", commitTo = "") As %Status
 		set password = @gln@("password")
 		set:commitFrom="" commitFrom=1
 		
-		set sc = ##class(sc.diff.gitHub).Get(.items, owner, repository, user, password, commitFrom, commitTo)
+		set sc = ##class(dev.diff.gitHub).Get(.items, owner, repository, user, password, commitFrom, commitTo)
 		return:$$$ISERR(sc) sc	
 	}
 	
@@ -242,7 +264,10 @@ ClassMethod setIgnore(ByRef filtermask)
 /// get or set working directory for export/import source
 ClassMethod workdir(workdir)
 {
-	s gln = ..gln() s:$d(workdir) @gln = workdir
+	set:$d(workdir) workdir = ##class(%File).NormalizeDirectory(workdir)
+	s gln = ..gln() 
+	s:$d(workdir) @gln = workdir
+	
 	///zu(12) namespace directory by default
 	#define nsdir $zu(12,"")
 	Q $g(@gln, $$$nsdir)
@@ -256,11 +281,14 @@ ClassMethod gln() [ CodeMode = expression, Private ]
 
 ClassMethod init(confile = "isc.json")
 {
-	set stream=##class(%Stream.FileCharacter).%New()
-	set sc=stream.LinkToFile(..workdir()_"/"_confile)
+	q:..workdir()="" "workdir is empty"
+	q:'##class(%File).Exists(..workdir()_confile) "configuration file: "_confile_" not found in "_..workdir()
+	
+	s stream=##class(%Stream.FileCharacter).%New()
+	s sc=stream.LinkToFile(..workdir()_confile)
 	s conf={}.%FromJSON(stream.Read($$$MaxCacheInt))
 	
-	s gln=..gln()
+	s gln = "^dev.code"
 	
 	s @gln@("compileList")=conf.compileList
 	s @gln@("projectName")=conf.projectName
@@ -269,6 +297,7 @@ ClassMethod init(confile = "isc.json")
 	s @gln@("user")=conf.user
 	s @gln@("password")=conf.password
 	s @gln@("git")=conf.git
+	s:@gln@("git")="" @gln@("git")=0
 	
 	w "compileList="_conf.compileList,!
 	w "projectName="_conf.projectName,!
@@ -333,11 +362,12 @@ ClassMethod filename(code)
 	s $p(filename,".",*)=ext
 	//B:code="DPRep.Rest.JSON.cls" "L"
 	#; for *.cls Package.Subpackage.ClassName.cls -> Folder/Subfolder/ClassName.cls
-	if ext ="cls" {
+	if (ext="cls") || (ext="gbl") {
 		s dirs = $piece( code, ".",1, *-2 ), dirs = $translate( dirs, ".", "/" )
 		s relpath = dirs _ "/" _ $piece( code, ".", *-1, * ) ;
 		s filename = ##class(%File).NormalizeFilename( relpath, wd )
 	}
+
 	Q filename
 }
 
@@ -441,6 +471,54 @@ ClassMethod fixDashIntoName()
 		}
     }
     k rs
+}
+
+ClassMethod mkdir(filename As %String) As %Status
+{
+	s sc = $$$OK
+	s path = ##class(%File).GetDirectory(filename) 
+	if '##class(%File).DirectoryExists(path) 
+	{
+		s sc = ##class(%File).CreateDirectoryChain(path) 
+		w !, "mkdir ", path, " ", sc 
+	}
+	return sc
+}
+
+ClassMethod getVersion() [ CodeMode = expression ]
+{
+"Version: "_..#version
+}
+
+ClassMethod checkMasks(name As %String, masks As %String) As %Boolean
+{
+	return:masks="" 1
+	return:name="" 0
+	
+	set name = $zcvt(name,"l")
+	set masks =  $zcvt(masks,"l")
+	
+	for i=1:1:$l(masks,",")
+	{
+		set pattern = "^"
+		set mask = $p(masks, ",", i)
+		
+		for index=1:1:$l(mask)
+		{
+			set char = $e(mask, index)
+    		set pattern = pattern _ $case(char,
+    									  ".":"\.",
+    									  "?":".",
+    									  "*":".*",
+    									     :char
+    									  )	
+		}
+		set pattern = pattern _ "$|"
+	}
+	set pattern = $e(pattern,1,*-1)
+	set matcher=##class(%Regex.Matcher).%New(pattern, name)
+	do matcher.Locate() 
+	return $select(matcher.Group="":0, 1:1)
 }
 
 }

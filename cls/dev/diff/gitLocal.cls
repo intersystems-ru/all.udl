@@ -1,4 +1,4 @@
-Class sc.diff.gitLocal
+Class dev.diff.gitLocal
 {
 
 /// Get diff between two points in repository
@@ -17,9 +17,13 @@ Class sc.diff.gitLocal
 ClassMethod buildDiff(repo As %String, sha1 As %String, sha2 As %String, Output items) As %Status
 {
 	$$$TOE(sc, ..createFile(.tempFile))
+	set oldDirectory = $system.Process.CurrentDirectory()
 	do $system.Process.CurrentDirectory(repo)
-	$$$TOE(sc, ..execute($$$FormatText("git diff --name-status %1 %2 > %3 2>&3", sha1, sha2, tempFile)))
+	$$$TOE(sc, ..execute($$$FormatText("git diff --name-status %1 %2 > %3 2>&1", sha1, sha2, tempFile)))
 	$$$TOE(sc, ..fileToString(tempFile, .diffRaw))
+	
+	set workdir = ##class(dev.code).workdir()
+	set path = ##class(dev.diff.utils).getLocalGitPathByWorkdir(workdir)
 	
 	for i=1:1:$length(diffRaw, $c(10)) 
 	{
@@ -27,29 +31,30 @@ ClassMethod buildDiff(repo As %String, sha1 As %String, sha2 As %String, Output 
 		set status = $e($piece(element, $c(9)))
 		set file = $piece(element, $c(9), 2)
 		
-		if ($l(file,"src/") < 2) continue
+		if ($l(file, path) < 2) continue
 		
-		set isRelevantFile = ##class(sc.diff.utils).isRelevantFile(file)
+		set isRelevantFile = ##class(dev.diff.utils).isRelevantFile(file)
 		if ((element="") || ('isRelevantFile))	continue
 		
 		if $length(element, $c(9))=2 
 		{
 			if ((status="M") || (status="U")) || (status="A") 
 			{
-				do ##class(sc.diff.utils).ToCacheName(.file)
+				do ##class(dev.diff.utils).ToCacheName(.file)
 				set items(file) = ""
 			}
 		}elseif $length(element, $c(9))=3 
 		{
 			set file = $piece(element, $c(9), 3)
-			if ($l(file,"src/") < 2) continue
+			if ($l(file, path) < 2) continue
 			if ((status="C") || (status="R")) 
 			{
-				do ##class(sc.diff.utils).ToCacheName(.newFile)
+				do ##class(dev.diff.utils).ToCacheName(.file)
 				set items(file) = ""
 			}
 		}
 	}
+	do $system.Process.CurrentDirectory(oldDirectory)
 	return sc
 }
 

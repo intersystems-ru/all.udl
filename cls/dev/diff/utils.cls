@@ -1,11 +1,12 @@
-Class sc.diff.utils
+Class dev.diff.utils
 {
 
 Parameter TRACKEDEXT As List = {$lb("xml", "cls", "csp", "csr", "mac", "int", "bas", "inc", "gbl", "prj", "obj", "pkg", "gof", "dfi", "pivot", "dashboard")};
 
 ClassMethod ToCacheName(ByRef filename)
 {
-	do:$L(filename,".xml")>1 ..getExtension(.filename)
+	if $get(filename)="" break
+	do:$L($zcvt(filename,"L"),".xml")>1 ..getExtension(.filename)
 	set str = $Select(
 		$L(filename,"cls/")>1:$Replace($P(filename,"cls/",2),"/","."),
 	    $L(filename,"csp/")>1:$Replace($P(filename,"csp/",2),"/","."),
@@ -29,7 +30,30 @@ ClassMethod getExtension(ByRef filename)
 		set filename = $extract(filename,1,*-4)_".DFI"
 	}elseif ($L(filename,"cls/") > 1) {
 		set filename = $extract(filename,1,*-4)_".CLS"
+	}elseif ($L(filename,"gbl/") > 1) {
+		set filename = $p($extract(filename,1,*-4),"gbl/",2)
 	}
+}
+
+ClassMethod getLocalGitPathByWorkdir(workdir As %String) As %String
+{
+	set path = ""
+	if ($L(workdir,"/") > 1) {
+		if ($P(workdir,"/",*) = "") {
+			set path = $P(workdir,"/",*-1)
+		}else {
+			set path = $P(workdir,"/",*)
+		}
+
+	}else {
+		if ($P(workdir,"\",*) = "") {
+			set path = $P(workdir,"\",*-1)
+		}else {
+			set path = $P(workdir,"\",*)
+		}
+	}
+	
+	return path_"/"
 }
 
 }
